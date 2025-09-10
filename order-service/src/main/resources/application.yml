@@ -1,0 +1,19 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: order-service
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0   # 100% requests
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+  endpoints:
+    web:
+      exposure:
+        include: health,info  # Expose health and info endpoints

@@ -1,0 +1,60 @@
+services:
+  server-gateway:
+    container_name: server-gateway
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: server-gateway
+    ports:
+      - "8090:8090"
+    depends_on:
+      order-service:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    environment:
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      ORDER_SERVICE_URL: http://order-service:8080
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  order-service:
+    container_name: order-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: order-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - jaeger
+    environment:
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.73.0
+    container_name: jaeger
+    ports:
+      - "16686:16686"   # UI Jaeger
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+networks:
+  microservices-net:
+    driver: bridge

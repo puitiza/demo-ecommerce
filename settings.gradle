@@ -1,0 +1,3 @@
+rootProject.name = "demo-ecommerce"
+include 'server-gateway', 'order-service'
+
