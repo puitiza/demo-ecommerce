@@ -11,11 +11,31 @@ services:
     depends_on:
       order-service:
         condition: service_healthy
+      server-discovery:
+        condition: service_healthy
       jaeger:
         condition: service_started
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
-      ORDER_SERVICE_URL: http://order-service:8080
+      DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  server-discovery:
+    container_name: server-discovery
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: server-discovery
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - microservices-net
     restart: unless-stopped
@@ -32,11 +52,13 @@ services:
     depends_on:
       product-service:
         condition: service_healthy
+      server-discovery:
+        condition: service_healthy
       jaeger:
         condition: service_started
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
-      ENDPOINT_PRODUCT_URL: http://product-service:8081
+      DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 10s
@@ -56,9 +78,13 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - jaeger
+      server-discovery:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
       interval: 10s

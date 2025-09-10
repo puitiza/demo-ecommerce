@@ -7,16 +7,21 @@ spring:
         webflux:
           routes:
             - id: order-service
-              uri: ${ORDER_SERVICE_URL:http://localhost:8080}
+              uri: lb://order-service
               predicates:
                 - Path=/order/**
             - id: product-service
-              uri: http://product-service:8081
+              uri: lb://product-service
               predicates:
                 - Path=/product/**
 
 server:
   port: 8090
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${DISCOVERY_ENDPOINT:http://localhost:8761/eureka}
 
 management:
   tracing:

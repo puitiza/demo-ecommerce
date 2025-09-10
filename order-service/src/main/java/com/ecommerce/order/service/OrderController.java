@@ -15,9 +15,6 @@ public class OrderController {
 
     private final RestTemplate restTemplate;
 
-    @Value("${endpoint.product.url}")
-    private String productUrl;
-
     public OrderController(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
@@ -26,7 +23,7 @@ public class OrderController {
     public String test() {
         logger.info("Processing test request in Order Service");
         // Call product-service
-        String productResponse = restTemplate.getForObject(productUrl + "/product/test", String.class);
+        String productResponse = restTemplate.getForObject("http://product-service/product/test", String.class);
         logger.info("Received response from Product Service: {}", productResponse);
         return "Order Service Response -> " + productResponse;
     }

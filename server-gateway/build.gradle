@@ -1,6 +1,8 @@
 description = 'demo-gateway'
+
 dependencies {
     // Apply shared dependency sets
+    applyDiscoveryDependencies(dependencies)
     applyTracingDependencies(dependencies)
 
     // Specific dependencies
