@@ -30,11 +30,37 @@ services:
     ports:
       - "8080:8080"
     depends_on:
+      product-service:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    environment:
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      ENDPOINT_PRODUCT_URL: http://product-service:8081
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  product-service:
+    container_name: product-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: product-service
+    ports:
+      - "8081:8081"
+    depends_on:
       - jaeger
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5

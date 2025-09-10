@@ -1,9 +1,9 @@
 server:
-  port: 8080
+  port: 8081
 
 spring:
   application:
-    name: order-service
+    name: product-service
 
 management:
   tracing:
@@ -17,7 +17,3 @@ management:
     web:
       exposure:
         include: health,info  # Expose health and info endpoints
-
-endpoint:
-  product:
-    url: ${ENDPOINT_PRODUCT_URL:http://localhost:8081}

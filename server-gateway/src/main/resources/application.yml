@@ -10,6 +10,10 @@ spring:
               uri: ${ORDER_SERVICE_URL:http://localhost:8080}
               predicates:
                 - Path=/order/**
+            - id: product-service
+              uri: http://product-service:8081
+              predicates:
+                - Path=/product/**
 
 server:
   port: 8090
