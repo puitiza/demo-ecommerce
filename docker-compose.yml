@@ -15,9 +15,12 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_started
+      keycloak:
+        condition: service_healthy
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
+      KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
     networks:
       - microservices-net
     restart: unless-stopped
@@ -48,7 +51,7 @@ services:
       args:
         MODULE: order-service
     ports:
-      - "8080:8080"
+      - "8082:8082"
     depends_on:
       product-service:
         condition: service_healthy
@@ -59,8 +62,9 @@ services:
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
+      KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,6 +89,7 @@ services:
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
+      KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
       interval: 10s
@@ -106,6 +111,28 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.3
+    container_name: keycloak
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./imports/master-realm.json:/opt/keycloak/data/import/master-realm.json
+      - ./imports/demo-ecommerce-realm.json:/opt/keycloak/data/import/demo-ecommerce-realm.json
+    command: start-dev --import-realm
+    healthcheck:
+      test: [ 'CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { java.net.URI uri = java.net.URI.create(args[0]); System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)uri.toURL().openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:9000/health/live' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - microservices-net
 
 networks:
   microservices-net:

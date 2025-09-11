@@ -45,6 +45,10 @@ ext {
         dependencyHandler.implementation 'io.micrometer:micrometer-tracing-bridge-otel'
         dependencyHandler.implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
     }
+    applySecurityDependencies = { dependencyHandler ->
+        dependencyHandler.implementation 'org.springframework.boot:spring-boot-starter-security'
+        dependencyHandler.implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    }
     applyDiscoveryDependencies = { dependencyHandler ->
         dependencyHandler.implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     }
