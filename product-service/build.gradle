@@ -5,6 +5,7 @@ dependencies {
     applyDiscoveryDependencies(dependencies)
     applySecurityDependencies(dependencies)
     applyTracingDependencies(dependencies)
+    applyKafkaDependencies(dependencies)
 
     // Specific dependencies
     implementation 'org.springframework.boot:spring-boot-starter-web'

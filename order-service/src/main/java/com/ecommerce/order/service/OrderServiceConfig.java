@@ -5,12 +5,15 @@ import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class OrderServiceConfig {
+
     @Bean
     @LoadBalanced //This use server-discovery
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
@@ -25,4 +28,12 @@ public class OrderServiceConfig {
                 })
                 .build(); // This adds traction interceptors automatically
     }
+
+    @Bean
+    public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> producerFactory) {
+        KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory);
+        template.setObservationEnabled(true); // Enable tracing for Kafka producer
+        return template;
+    }
+
 }
