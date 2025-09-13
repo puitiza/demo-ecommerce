@@ -31,4 +31,32 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info  # Expose health and info endpoints
+        include: health,info,metrics  # Expose endpoints
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      productServiceCircuit:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 5s
+        permittedNumberOfCallsInHalfOpenState: 3
+        registerHealthIndicator: true
+        recordExceptions:
+          - org.springframework.web.client.RestClientException
+          - java.util.concurrent.TimeoutException
+          - java.io.IOException
+  timelimiter:
+    instances:
+      productServiceCircuit:
+        timeoutDuration: 3s
+
+logging:
+  level:
+    io.github.resilience4j: DEBUG
