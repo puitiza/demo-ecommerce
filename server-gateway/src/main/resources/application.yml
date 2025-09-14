@@ -1,6 +1,9 @@
 spring:
   application:
     name: gateway-service
+  data:
+    redis:
+      url: ${REDIS_ENDPOINT:redis://localhost:6379}
   cloud:
     gateway:
       server:
@@ -15,6 +18,12 @@ spring:
                   args:
                     regexp: ^/order/docs/(?<segment>.*)
                     replacement: /docs/${segment}
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@userKeyResolver}"
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 5
+                    redis-rate-limiter.requestedTokens: 1
             - id: product-service
               uri: lb://product-service
               predicates:
@@ -51,3 +60,5 @@ logging:
   level:
     org.springframework.security: DEBUG
     org.springframework.security.web: DEBUG
+    org.springframework.cloud.gateway.filter.ratelimit: DEBUG
+    org.springframework.data.redis: DEBUG

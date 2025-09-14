@@ -17,10 +17,13 @@ services:
         condition: service_started
       keycloak:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
+      REDIS_ENDPOINT: redis://redis:6379
     networks:
       - microservices-net
     restart: unless-stopped
@@ -173,6 +176,20 @@ services:
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8.0
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
