@@ -3,6 +3,7 @@ package com.ecommerce.order.service;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +28,7 @@ public class OrderController {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @GetMapping("/test")
+    @GetMapping(value = "/test", produces = MediaType.APPLICATION_JSON_VALUE)
     @CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "fallbackProductService")
     public String test(@RequestParam(defaultValue = "test") String endpoint) {
         logger.info("Processing test request in Order Service, endpoint: {}", endpoint);

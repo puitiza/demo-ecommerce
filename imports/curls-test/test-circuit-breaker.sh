@@ -34,7 +34,7 @@ curl --location 'http://localhost:8090/order/test' --header "Authorization: Bear
 echo -e "\n"
 
 echo "Test 2: Simulate Failures (HTTP 500)"
-for i in {1..6}; do
+for i in {1..12}; do
   curl --location 'http://localhost:8090/order/test?endpoint=test-error' --header "Authorization: Bearer $JWT_TOKEN"
   echo -e "\n"
   sleep 1

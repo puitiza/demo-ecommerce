@@ -10,10 +10,20 @@ spring:
               uri: lb://order-service
               predicates:
                 - Path=/order/**
+              filters:
+                - name: RewritePath
+                  args:
+                    regexp: ^/order/docs/(?<segment>.*)
+                    replacement: /docs/${segment}
             - id: product-service
               uri: lb://product-service
               predicates:
                 - Path=/product/**
+              filters:
+                - name: RewritePath
+                  args:
+                    regexp: ^/product/docs/(?<segment>.*)
+                    replacement: /docs/${segment}
   security:
     oauth2:
       resourceserver:

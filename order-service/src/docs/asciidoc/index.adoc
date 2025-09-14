@@ -1,0 +1,21 @@
+= Order Service API Docs
+:toc:
+:toclevels: 2
+:sectnums:
+
+== Order Test Endpoint
+
+=== Request
+include::{snippets}/order-test/http-request.adoc[]
+
+=== Request Headers
+include::{snippets}/order-test/request-headers.adoc[]
+
+=== Request Parameters
+include::{snippets}/order-test/query-parameters.adoc[]
+
+=== Response
+include::{snippets}/order-test/http-response.adoc[]
+
+=== Response Body
+include::{snippets}/order-test/response-body.adoc[]

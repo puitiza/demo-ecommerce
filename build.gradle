@@ -55,4 +55,9 @@ ext {
     applyKafkaDependencies = { dependencyHandler ->
         dependencyHandler.implementation 'org.springframework.kafka:spring-kafka'
     }
+    applyRestDocsDependencies = { dependencyHandler ->
+        dependencyHandler.testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+        dependencyHandler.testImplementation 'org.springframework.restdocs:spring-restdocs-core'
+        dependencyHandler.testImplementation 'org.asciidoctor:asciidoctorj:3.0.0'
+    }
 }

@@ -1,3 +1,28 @@
+plugins {
+    id 'org.asciidoctor.jvm.convert' version '3.3.2'
+}
+
+ext {
+    snippetsDir = file("build/generated-snippets")
+}
+
+asciidoctor {
+    dependsOn test
+    inputs.dir snippetsDir
+    attributes "snippets": snippetsDir // 👈 define {snippets} for index.adoc
+    sources {
+        include "index.adoc"
+    }
+    baseDirFollowsSourceFile()
+}
+
+bootJar {
+    dependsOn asciidoctor
+    from("${asciidoctor.outputDir}") {
+        into 'BOOT-INF/classes/static/docs' // 👈 Pack the doc within the jar
+    }
+}
+
 description = 'demo-product-service'
 
 dependencies {
@@ -6,9 +31,12 @@ dependencies {
     applySecurityDependencies(dependencies)
     applyTracingDependencies(dependencies)
     applyKafkaDependencies(dependencies)
+    applyRestDocsDependencies(dependencies)
 
     // Specific dependencies
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

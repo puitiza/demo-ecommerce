@@ -20,7 +20,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(matcherRegistry -> matcherRegistry
                         .requestMatchers(
-                                "/actuator/health",
+                                "/docs/**",
                                 "/actuator/health/**",
                                 "/actuator/metrics/**").permitAll()
                         .anyRequest().authenticated()
