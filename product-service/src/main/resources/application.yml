@@ -33,4 +33,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info  # Expose health and info endpoints
+        include: health,info,prometheus # Expose endpoints
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}

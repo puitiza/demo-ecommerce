@@ -1,8 +1,15 @@
 description = 'demo-discovery'
 
 dependencies {
-    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+
+    // Spring Boot Admin Server
+    implementation 'de.codecentric:spring-boot-admin-starter-server:3.5.3'
+
+    // Actuator + Prometheus
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
 
     // Specific dependencies
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

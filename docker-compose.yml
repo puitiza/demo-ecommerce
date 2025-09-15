@@ -194,6 +194,28 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./imports/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - microservices-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 networks:
   microservices-net:
     driver: bridge

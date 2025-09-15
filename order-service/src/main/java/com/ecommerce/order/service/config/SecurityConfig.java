@@ -22,7 +22,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/docs/**",
                                 "/actuator/health/**",
-                                "/actuator/metrics/**").permitAll()
+                                "/actuator/prometheus").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))

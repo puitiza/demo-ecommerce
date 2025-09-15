@@ -7,5 +7,19 @@ spring:
 
 eureka:
   client:
-    register-with-eureka: false  # The server itself is not recorded
-    fetch-registry: false        # Does not consult other records
+    register-with-eureka: false # The server itself is not recorded
+    fetch-registry: false       # Does not consult other records
+  server:
+    enable-self-preservation: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}

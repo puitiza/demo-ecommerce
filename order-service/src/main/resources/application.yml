@@ -31,13 +31,16 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics  # Expose endpoints
+        include: health,info,prometheus # Expose endpoints
   health:
     circuitbreakers:
       enabled: true
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 resilience4j:
   circuitbreaker:

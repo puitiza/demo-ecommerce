@@ -44,6 +44,7 @@ ext {
         dependencyHandler.implementation 'org.springframework.boot:spring-boot-starter-actuator'
         dependencyHandler.implementation 'io.micrometer:micrometer-tracing-bridge-otel'
         dependencyHandler.implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+        dependencyHandler.implementation 'io.micrometer:micrometer-registry-prometheus'
     }
     applySecurityDependencies = { dependencyHandler ->
         dependencyHandler.implementation 'org.springframework.boot:spring-boot-starter-security'
