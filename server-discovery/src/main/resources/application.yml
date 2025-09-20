@@ -23,3 +23,7 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
+logging:
+  pattern:
+    console: '{"timestamp":"%d{yyyy-MM-dd''T''HH:mm:ss.SSSXXX}","level":"%p","thread":"%t","logger":"%c{1}","message":"%m","application":"${spring.application.name:-}","traceId":"%X{traceId:-}","spanId":"%X{spanId:-}","exception":"%ex"}%n'

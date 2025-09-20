@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: 'default'
+    folder: 'Dashboards'               # Carpeta en la UI
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

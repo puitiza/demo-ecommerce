@@ -1,0 +1,68 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+  tail_sampling/drop_noise:
+    decision_wait: 5s      # Wait for all the trace spawns
+    num_traces: 10000      # Traces buffer in memory
+    policies:
+      # 1. Exclude unnecessary endpoints
+      - name: drop_actuator
+        type: string_attribute
+        string_attribute:
+          key: http.url
+          values:
+            - /actuator/health
+            - /actuator/prometheus
+          invert_match: true   # If it coincides => drop all the trace
+      # 2. Exclude internal calls from Eureka Discovery Client
+      - name: drop_eureka
+        type: string_attribute
+        string_attribute:
+          key: http.url
+          values:
+            - ^http://.*:8761/eureka/.*   # REGEX for any /Eureka /*
+          enabled_regex_matching: true
+          invert_match: true
+      # 3. (opcional) Excluir trazas de swagger, favicon, error
+      - name: drop_misc
+        type: string_attribute
+        string_attribute:
+          key: http.url
+          values:
+            - /swagger-ui.html
+            - /swagger-ui/index.html
+            - /v3/api-docs
+            - /favicon.ico
+            - /error
+          invert_match: true
+      # 4. Keep everything else
+      - name: sample_all
+        type: always_sample
+
+exporters:
+  otlp/jaeger:
+    endpoint: http://jaeger:4317
+    tls:
+      insecure: true
+
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [tail_sampling/drop_noise, batch]
+      exporters: [otlp/jaeger]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheusremotewrite]

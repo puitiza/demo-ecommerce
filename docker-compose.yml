@@ -13,14 +13,14 @@ services:
         condition: service_healthy
       server-discovery:
         condition: service_healthy
-      jaeger:
+      otel-collector:
         condition: service_started
       keycloak:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
       REDIS_ENDPOINT: redis://redis:6379
@@ -60,12 +60,12 @@ services:
         condition: service_healthy
       server-discovery:
         condition: service_healthy
-      jaeger:
+      otel-collector:
         condition: service_started
       kafka:
         condition: service_healthy
     environment:
-      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -90,12 +90,12 @@ services:
     depends_on:
       server-discovery:
         condition: service_healthy
-      jaeger:
+      otel-collector:
         condition: service_started
       kafka:
         condition: service_healthy
     environment:
-      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -113,8 +113,8 @@ services:
     container_name: jaeger
     ports:
       - "16686:16686"   # UI Jaeger
-      - "4317:4317"     # OTLP gRPC
-      - "4318:4318"     # OTLP HTTP
+      - "14268:14268"   # HTTP receiver (para OTEL Collector)
+      - "14250:14250"
     environment:
       COLLECTOR_OTLP_ENABLED: true
     networks:
@@ -131,8 +131,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./imports/master-realm.json:/opt/keycloak/data/import/master-realm.json
-      - ./imports/demo-ecommerce-realm.json:/opt/keycloak/data/import/demo-ecommerce-realm.json
+      - ./imports/keycloak/master-realm.json:/opt/keycloak/data/import/master-realm.json
+      - ./imports/keycloak/demo-ecommerce-realm.json:/opt/keycloak/data/import/demo-ecommerce-realm.json
     command: start-dev --import-realm
     healthcheck:
       test: [ 'CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { java.net.URI uri = java.net.URI.create(args[0]); System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)uri.toURL().openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:9000/health/live' ]
@@ -200,7 +200,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./imports/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./imports/observability/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - microservices-net
     restart: unless-stopped
@@ -210,10 +210,61 @@ services:
     container_name: grafana
     ports:
       - "3000:3000"
+    volumes:
+      - ./imports/observability/grafana/provisioning/datasources/grafana-datasource.yml:/etc/grafana/provisioning/datasources/grafana-datasource.yml
+      - ./imports/observability/grafana/provisioning/dashboards/grafana-dashboard.yml:/etc/grafana/provisioning/dashboards/grafana-dashboard.yml
+      - ./imports/observability/grafana/dashboards:/etc/grafana/dashboards
+      - ./imports/observability/grafana/entrypoint.sh:/entrypoint.sh
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     networks:
       - microservices-net
     depends_on:
       - prometheus
+      - loki
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/config/config.yml
+    volumes:
+      - ./imports/observability/loki-config.yml:/etc/loki/config/config.yml
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  promtail-agent:
+    image: grafana/promtail:3.2.0
+    container_name: promtail-agent
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./imports/observability/promtail-config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro              # Mount the Docker socket
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro  # Access to container logs
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.135.0
+    container_name: otel-collector
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./imports/observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC (For traces/metric/records)
+      - "4318:4318"   # OTLP HTTP (For Jaeger)
+    depends_on:
+      - jaeger
+      - loki
+    networks:
+      - microservices-net
     restart: unless-stopped
 
 networks:
