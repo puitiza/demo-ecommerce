@@ -52,6 +52,7 @@ ext {
     }
     applyDiscoveryDependencies = { dependencyHandler ->
         dependencyHandler.implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+        dependencyHandler.implementation 'org.springframework.cloud:spring-cloud-starter-config'
     }
     applyKafkaDependencies = { dependencyHandler ->
         dependencyHandler.implementation 'org.springframework.kafka:spring-kafka'

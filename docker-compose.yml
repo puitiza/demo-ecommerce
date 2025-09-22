@@ -13,6 +13,8 @@ services:
         condition: service_healthy
       server-discovery:
         condition: service_healthy
+      server-config:
+        condition: service_healthy
       otel-collector:
         condition: service_started
       keycloak:
@@ -23,6 +25,7 @@ services:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
+      CONFIG_ENDPOINT: http://server-config:8885
       REDIS_ENDPOINT: redis://redis:6379
     networks:
       - microservices-net
@@ -46,6 +49,24 @@ services:
       - microservices-net
     restart: unless-stopped
 
+  server-config:
+    container_name: server-config
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE: server-config
+    ports:
+      - "8885:8885"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8885/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
   order-service:
     container_name: order-service
     build:
@@ -60,6 +81,8 @@ services:
         condition: service_healthy
       server-discovery:
         condition: service_healthy
+      server-config:
+        condition: service_healthy
       otel-collector:
         condition: service_started
       kafka:
@@ -68,6 +91,7 @@ services:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
+      CONFIG_ENDPOINT: http://server-config:8885
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
@@ -90,6 +114,8 @@ services:
     depends_on:
       server-discovery:
         condition: service_healthy
+      server-config:
+        condition: service_healthy
       otel-collector:
         condition: service_started
       kafka:
@@ -98,6 +124,7 @@ services:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
       DISCOVERY_ENDPOINT: http://server-discovery:8761/eureka
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
+      CONFIG_ENDPOINT: http://server-config:8885
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
@@ -219,7 +246,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: true
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    entrypoint: [ "/bin/sh", "/entrypoint.sh" ]
     networks:
       - microservices-net
     depends_on:

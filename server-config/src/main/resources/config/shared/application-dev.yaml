@@ -1,0 +1,41 @@
+#Publish Application(Register with Eureka)
+eureka:
+  client:
+    service-url: # This information must be given to which Eureka Server address the application will connect.
+      defaultZone: ${DISCOVERY_ENDPOINT:http://localhost:8761/eureka}
+
+# Fetch configuration from Spring Cloud Config Server
+spring:
+  cloud:
+    config:
+      fail-fast: true # Fail startup if config server connection fails (optional)
+      retry:
+        max-attempts: 30 # Retry retrieving config up to 30 times
+        max-interval: 8000 # Wait up to 8 seconds between retries
+
+# Send all requests to otel-collector
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0   # 100% requests
+  otlp:
+    tracing: # Send tracing data (For Jaeger or Tempo)
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+  endpoints:
+    web:
+      exposure: # Exposes management endpoints for monitoring
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# Logs configuration
+logging:
+  pattern:
+    console: '{"timestamp":"%d{yyyy-MM-dd''T''HH:mm:ss.SSSXXX}","level":"%p","thread":"%t","logger":"%c{1}","message":"%m","traceId":"%X{traceId:-}","spanId":"%X{spanId:-}","exception":"%ex"}%n'
+  level:
+    com.netflix.discovery: WARN

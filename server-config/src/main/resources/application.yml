@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: server-config
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native: #Get files yml from local
+          search-locations: classpath:config/shared/,classpath:config/
+server:
+  port: 8885

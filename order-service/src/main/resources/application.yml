@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: order-service
+  profiles:
+    active: dev
+  config:
+    import: optional:configserver:${CONFIG_ENDPOINT:http://localhost:8885}
   security:
     oauth2:
       resourceserver:
@@ -14,33 +18,6 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${DISCOVERY_ENDPOINT:http://localhost:8761/eureka}
-
-management:
-  tracing:
-    enabled: true
-    sampling:
-      probability: 1.0   # 100% requests
-  otlp:
-    tracing:
-      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus # Expose endpoints
-  health:
-    circuitbreakers:
-      enabled: true
-  endpoint:
-    health:
-      show-details: always
-  metrics:
-    tags:
-      application: ${spring.application.name}
 
 resilience4j:
   circuitbreaker:
@@ -61,7 +38,6 @@ resilience4j:
         timeoutDuration: 3s
 
 logging:
-  pattern:
-    console: '{"timestamp":"%d{yyyy-MM-dd''T''HH:mm:ss.SSSXXX}","level":"%p","thread":"%t","logger":"%c{1}","message":"%m","application":"${spring.application.name:-}","traceId":"%X{traceId:-}","spanId":"%X{spanId:-}","exception":"%ex"}%n'
   level:
-    io.github.resilience4j: DEBUG
+    io.github.resilience4j: INFO
+    io.github.resilience4j.circuitbreaker: DEBUG
