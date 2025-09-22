@@ -2,9 +2,6 @@ description = 'demo-discovery'
 
 dependencies {
 
-    // Spring Boot Admin Server
-    implementation 'de.codecentric:spring-boot-admin-starter-server:3.5.3'
-
     // Actuator + Prometheus
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
