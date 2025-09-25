@@ -17,8 +17,6 @@ services:
         condition: service_healthy
       otel-collector:
         condition: service_started
-      keycloak:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -27,6 +25,7 @@ services:
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
       CONFIG_ENDPOINT: http://server-config:8885
       REDIS_ENDPOINT: redis://redis:6379
+      SPRING_PROFILES_ACTIVE: docker
     networks:
       - microservices-net
     restart: unless-stopped
@@ -93,6 +92,7 @@ services:
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
       CONFIG_ENDPOINT: http://server-config:8885
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_PROFILES_ACTIVE: docker
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
       interval: 10s
@@ -126,6 +126,7 @@ services:
       KEYCLOAK_ENDPOINT: http://keycloak:8080/realms
       CONFIG_ENDPOINT: http://server-config:8885
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_PROFILES_ACTIVE: docker
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
       interval: 10s
@@ -161,11 +162,6 @@ services:
       - ./imports/keycloak/master-realm.json:/opt/keycloak/data/import/master-realm.json
       - ./imports/keycloak/demo-ecommerce-realm.json:/opt/keycloak/data/import/demo-ecommerce-realm.json
     command: start-dev --import-realm
-    healthcheck:
-      test: [ 'CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { java.net.URI uri = java.net.URI.create(args[0]); System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)uri.toURL().openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:9000/health/live' ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
     networks:
       - microservices-net
@@ -294,6 +290,56 @@ services:
       - microservices-net
     restart: unless-stopped
 
+  sonarqube:
+    image: sonarqube:25.9.0.112764-community
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: true
+      SONARQUBE_ADMIN_PASSWORD: "MySecurePoCPass123!"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - ./imports/sonarqube/init.sh:/tmp/init.sh:ro  # Mount the script
+      - ./imports/sonarqube:/imports/sonarqube:rw  # Write Token SQ
+    entrypoint: [ "/bin/bash", "/tmp/init.sh" ]  # Override to run the script
+    networks:
+      - microservices-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9000/api/system/status || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  sonar-analysis:
+    image: eclipse-temurin:17-jdk
+    container_name: sonar-analysis
+    working_dir: /workspace
+    environment:
+      SONAR_HOST_URL: "http://sonarqube:9000"
+      TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
+    volumes:
+      - .:/workspace  # Source Project for Analysis
+      - ./.git:/workspace/.git:ro # Show read-only who the author is (blame for Sonar)
+      - ./imports/sonarqube:/imports/sonarqube:ro  # Token SQ (read-only)
+      - /var/run/docker.sock:/var/run/docker.sock  # For Testcontainers
+    command: ./gradlew clean test integrationTest jacocoTestReport sonar
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    networks:
+      - microservices-net
+
 networks:
   microservices-net:
     driver: bridge
+
+volumes:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  sonar_shared:

@@ -25,7 +25,7 @@ public class CircuitBreakerTracingListener {
     }
 
 
-    private void addStateToSpan(CircuitBreakerOnStateTransitionEvent event) {
+    void addStateToSpan(CircuitBreakerOnStateTransitionEvent event) {
         Span span = Span.current();
         if (span != null && span.getSpanContext().isValid()) {
             span.setAttribute("circuitbreaker.name", event.getCircuitBreakerName());

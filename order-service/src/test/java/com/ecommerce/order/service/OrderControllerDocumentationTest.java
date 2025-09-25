@@ -14,15 +14,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.client.RestTemplate;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseBody;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
-import static org.springframework.restdocs.headers.HeaderDocumentation.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,6 +38,9 @@ class OrderControllerDocumentationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private OrderController controller;
 
     @MockitoBean
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -66,5 +72,21 @@ class OrderControllerDocumentationTest {
                         ),
                         responseBody()
                 ));
+    }
+
+    @Test
+    void shouldHandleFallbackProductService() {
+        // Arrange
+        String endpoint = "test";
+        RuntimeException throwable = new RuntimeException("Service down");
+
+        // Act
+        String result = controller.fallbackProductService(endpoint, throwable);
+
+        // Assert
+        assertThat(result).isEqualTo("Order Service Response -> Fallback due to: Service down");
+
+        verify(kafkaTemplate).send("order-events", "Product Service unavailable for endpoint test, using fallback response");
+
     }
 }

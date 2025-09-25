@@ -1,7 +1,71 @@
 plugins {
-    id 'org.asciidoctor.jvm.convert' version '3.3.2'
+    id 'org.asciidoctor.jvm.convert' version "4.0.5"
+    id 'jacoco'
 }
 
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+/**
+ * ------------------------------- Source sets for Integration Tests ----------------------
+ */
+sourceSets {
+    integrationTest {
+        java.srcDir 'src/integrationTest/java'
+        resources.srcDir 'src/integrationTest/resources'
+        compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+
+    systemProperty 'spring.profiles.active', 'integration-test'
+
+//     finalizedBy jacocoTestReport
+}
+
+/**
+ * ---------------------- Jacoco (Join Unit + Integration) ----------------------
+ */
+jacocoTestReport {
+    dependsOn test, integrationTest
+
+    executionData fileTree(layout.buildDirectory).include(
+            "/jacoco/test.exec*",
+            "/jacoco/integrationTest.exec*"
+    )
+
+    sourceDirectories.setFrom files(sourceSets.main.allSource.srcDirs)
+    classDirectories.setFrom files(sourceSets.main.output)
+
+    reports {
+        xml.required = true   // 👈 Sonar
+        html.required = true  // 👈 Local
+    }
+
+    afterEvaluate {
+        jacocoTestReport {
+            classDirectories.setFrom(files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: [
+                        '**/ProductServiceApplication*.class',
+                        '**/config/**'
+                ])
+            }))
+        }
+    }
+}
+/**
+ * --------------------- Spring Rest Docs Configuration ---------------------------------
+ */
 ext {
     snippetsDir = file("build/generated-snippets")
 }
@@ -9,17 +73,15 @@ ext {
 asciidoctor {
     dependsOn test
     inputs.dir snippetsDir
-    attributes "snippets": snippetsDir // 👈 define {snippets} for index.adoc
-    sources {
-        include "index.adoc"
-    }
+    attributes "snippets": snippetsDir // Define {snippets} for index.adoc
+    sources { include "index.adoc" }
     baseDirFollowsSourceFile()
 }
 
 bootJar {
-    dependsOn asciidoctor
+    dependsOn asciidoctor, test
     from("${asciidoctor.outputDir}") {
-        into 'BOOT-INF/classes/static/docs' // 👈 Pack the doc within the jar
+        into 'BOOT-INF/classes/static/docs' // Pack the doc within the jar
     }
 }
 
@@ -36,7 +98,14 @@ dependencies {
     // Specific dependencies
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // Unit tests
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Integration tests
+    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-test'
+    integrationTestImplementation 'org.springframework.security:spring-security-test'
+    integrationTestImplementation 'org.testcontainers:junit-jupiter'
+    integrationTestImplementation 'org.testcontainers:kafka:1.21.3'
 }

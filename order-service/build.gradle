@@ -1,7 +1,39 @@
 plugins {
-    id 'org.asciidoctor.jvm.convert' version '3.3.2'
+    id 'org.asciidoctor.jvm.convert' version "4.0.5"
+    id 'jacoco'
 }
 
+/**
+ * ------------------------------- Jacoco Configuration  -----------------------------------
+ */
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+test {
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test // Ensure tests run before report generation
+    reports {
+        xml.required = true   // 👈 For Sonar
+        html.required = true  // 👈 For local check
+    }
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    '**/OrderServiceApplication*.class',
+                    '**/config/**'  // The entire config folder
+            ])
+        }))
+    }
+}
+
+/**
+ * --------------------- Spring Rest Docs Configuration ---------------------------------
+ */
 ext {
     snippetsDir = file("build/generated-snippets")
 }
@@ -9,7 +41,7 @@ ext {
 asciidoctor {
     dependsOn test
     inputs.dir snippetsDir
-    attributes "snippets": snippetsDir // 👈 define {snippets} for index.adoc
+    attributes "snippets": snippetsDir // Define {snippets} for index.adoc
     sources {
         include "index.adoc"
     }
@@ -19,7 +51,7 @@ asciidoctor {
 bootJar {
     dependsOn asciidoctor
     from("${asciidoctor.outputDir}") {
-        into 'BOOT-INF/classes/static/docs' // 👈 Pack the doc within the jar
+        into 'BOOT-INF/classes/static/docs' // Pack the doc within the jar
     }
 }
 

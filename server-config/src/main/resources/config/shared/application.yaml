@@ -35,7 +35,5 @@ management:
 
 # Logs configuration
 logging:
-  pattern:
-    console: '{"timestamp":"%d{yyyy-MM-dd''T''HH:mm:ss.SSSXXX}","level":"%p","thread":"%t","logger":"%c{1}","message":"%m","traceId":"%X{traceId:-}","spanId":"%X{spanId:-}","exception":"%ex"}%n'
   level:
     com.netflix.discovery: WARN

@@ -1,4 +1,4 @@
-package com.ecommerce.order.service;
+package com.ecommerce.order.service.config;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;

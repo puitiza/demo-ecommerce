@@ -1,0 +1,17 @@
+spring:
+  cloud:
+    discovery:
+      enabled: false  # Eureka disables
+  kafka:
+    consumer:
+      group-id: test-consumer  # Force only the Group test
+
+management:
+  tracing:
+    enabled: false  # Off tracing for speed
+
+logging:
+  level:
+    com.netflix.discovery: ERROR
+    org.apache.kafka: WARN
+    org.apache.kafka.clients: ERROR
