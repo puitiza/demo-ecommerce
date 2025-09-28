@@ -58,19 +58,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker images (Single-arch with Buildx)
+      - name: Build and push Docker images
         run: |
           SERVICES=("server-gateway" "server-discovery" "server-config" "product-service" "order-service")
           VERSION="${{ env.new_version }}"
-          docker buildx create --use || true
           for SERVICE in "${SERVICES[@]}"; do
-            echo "Building and pushing $SERVICE for amd64 only"
-            docker buildx build \
-              --platform linux/amd64 \
-              --build-arg MODULE=$SERVICE \
-              -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION \
-              -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest \
-              --push .
+            echo "Building and pushing $SERVICE:$VERSION and :latest"
+            docker build --build-arg MODULE=$SERVICE -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION .
+            docker push ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION
+            docker tag ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest
+            docker push ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest
           done
 
       - name: Create tag and GitHub Release
