@@ -36,7 +36,12 @@ fi
 echo "✅ Auth token obtained successfully (length: ${#TOKEN})"
 
 echo "=== Testing API with auth (via Gateway) ==="
-curl -f -H "Authorization: Bearer $TOKEN" http://localhost:8090/api/products || { echo "Products API failed"; exit 1; }
+# Use valid routed path: /product/test → lb://product-service /product/test
+if ! curl -f -v -H "Authorization: Bearer $TOKEN" http://localhost:8090/product/test; then
+    echo "Products API failed (verbose log above). Token claims for debug:"
+    echo "$TOKEN" | jq -r '. | {sub: .sub, aud: .aud, scope: .scope, iss: .iss}'  # Decode JWT header (assumes jq can parse base64)
+    exit 1
+fi
 echo "API call succeeded!"
 
 echo "=== Verifying Kafka topics ==="
