@@ -1,8 +1,6 @@
 services:
   server-gateway:
-    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:v1.0.1
     container_name: server-gateway
-    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:latest
     ports:
       - "8090:8090"
     depends_on:
@@ -26,41 +24,35 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-
+    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:v1.0.1
   server-discovery:
-    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:v1.0.1
     container_name: server-discovery
-    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:latest
     ports:
       - "8761:8761"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - microservices-net
     restart: unless-stopped
-
+    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:v1.0.1
   server-config:
-    image: ghcr.io/puitiza/demo-ecommerce-server-config:v1.0.1
     container_name: server-config
-    image: ghcr.io/puitiza/demo-ecommerce-server-config:latest
     ports:
       - "8885:8885"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8885/actuator/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8885/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - microservices-net
     restart: unless-stopped
-
+    image: ghcr.io/puitiza/demo-ecommerce-server-config:v1.0.1
   order-service:
-    image: ghcr.io/puitiza/demo-ecommerce-order-service:v1.0.1
     container_name: order-service
-    image: ghcr.io/puitiza/demo-ecommerce-order-service:latest
     ports:
       - "8082:8082"
     depends_on:
@@ -82,18 +74,16 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_PROFILES_ACTIVE: docker
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - microservices-net
     restart: unless-stopped
-
+    image: ghcr.io/puitiza/demo-ecommerce-order-service:v1.0.1
   product-service:
-    image: ghcr.io/puitiza/demo-ecommerce-product-service:v1.0.1
     container_name: product-service
-    image: ghcr.io/puitiza/demo-ecommerce-product-service:latest
     ports:
       - "8081:8081"
     depends_on:
@@ -113,27 +103,26 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_PROFILES_ACTIVE: docker
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - microservices-net
     restart: unless-stopped
-
+    image: ghcr.io/puitiza/demo-ecommerce-product-service:v1.0.1
   jaeger:
     image: jaegertracing/all-in-one:1.73.0
     container_name: jaeger
     ports:
-      - "16686:16686"   # UI Jaeger
-      - "14268:14268"   # HTTP receiver (para OTEL Collector)
+      - "16686:16686" # UI Jaeger
+      - "14268:14268" # HTTP receiver (para OTEL Collector)
       - "14250:14250"
     environment:
       COLLECTOR_OTLP_ENABLED: true
     networks:
       - microservices-net
     restart: unless-stopped
-
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.3
     container_name: keycloak
@@ -150,7 +139,6 @@ services:
     restart: unless-stopped
     networks:
       - microservices-net
-
   zookeeper:
     image: confluentinc/cp-zookeeper:7.7.1
     container_name: zookeeper
@@ -161,11 +149,10 @@ services:
       - microservices-net
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181" ]
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
       interval: 10s
       timeout: 5s
       retries: 5
-
   kafka:
     image: confluentinc/cp-kafka:7.7.1
     container_name: kafka
@@ -183,11 +170,10 @@ services:
       - microservices-net
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 10s
       timeout: 5s
       retries: 5
-
   redis:
     image: redis:8.0
     container_name: redis
@@ -197,11 +183,10 @@ services:
       - microservices-net
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -212,7 +197,6 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -227,14 +211,13 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: true
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
-    entrypoint: [ "/bin/sh", "/entrypoint.sh" ]
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     networks:
       - microservices-net
     depends_on:
       - prometheus
       - loki
     restart: unless-stopped
-
   loki:
     image: grafana/loki:3.2.0
     container_name: loki
@@ -246,35 +229,32 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-
   promtail-agent:
     image: grafana/promtail:3.2.0
     container_name: promtail-agent
     command: -config.file=/etc/promtail/config.yml
     volumes:
       - ./imports/observability/promtail-config.yml:/etc/promtail/config.yml
-      - /var/run/docker.sock:/var/run/docker.sock:ro              # Mount the Docker socket
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro  # Access to container logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Mount the Docker socket
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro # Access to container logs
     networks:
       - microservices-net
     restart: unless-stopped
-
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.135.0
     container_name: otel-collector
-    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./imports/observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "4317:4317"   # OTLP gRPC (For traces/metric/records)
-      - "4318:4318"   # OTLP HTTP (For Jaeger)
+      - "4317:4317" # OTLP gRPC (For traces/metric/records)
+      - "4318:4318" # OTLP HTTP (For Jaeger)
     depends_on:
       - jaeger
       - loki
     networks:
       - microservices-net
     restart: unless-stopped
-
   sonarqube:
     image: sonarqube:25.9.0.112764-community
     container_name: sonarqube
@@ -287,19 +267,18 @@ services:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_extensions:/opt/sonarqube/extensions
-      - ./imports/sonarqube/init.sh:/tmp/init.sh:ro  # Mount the script
-      - ./imports/sonarqube:/imports/sonarqube:rw  # Write Token SQ
-    entrypoint: [ "/bin/bash", "/tmp/init.sh" ]  # Override to run the script
+      - ./imports/sonarqube/init.sh:/tmp/init.sh:ro # Mount the script
+      - ./imports/sonarqube:/imports/sonarqube:rw # Write Token SQ
+    entrypoint: ["/bin/bash", "/tmp/init.sh"] # Override to run the script
     networks:
       - microservices-net
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:9000/api/system/status || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/status || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-
   sonar-analysis:
     image: eclipse-temurin:17-jdk
     container_name: sonar-analysis
@@ -308,21 +287,19 @@ services:
       SONAR_HOST_URL: "http://sonarqube:9000"
       TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
     volumes:
-      - .:/workspace  # Source Project for Analysis
+      - .:/workspace # Source Project for Analysis
       - ./.git:/workspace/.git:ro # Show read-only who the author is (blame for Sonar)
-      - ./imports/sonarqube:/imports/sonarqube:ro  # Token SQ (read-only)
-      - /var/run/docker.sock:/var/run/docker.sock  # For Testcontainers
+      - ./imports/sonarqube:/imports/sonarqube:ro # Token SQ (read-only)
+      - /var/run/docker.sock:/var/run/docker.sock # For Testcontainers
     command: ./gradlew clean test integrationTest jacocoTestReport sonar
     depends_on:
       sonarqube:
         condition: service_healthy
     networks:
       - microservices-net
-
 networks:
   microservices-net:
     driver: bridge
-
 volumes:
   sonarqube_data:
   sonarqube_logs:
