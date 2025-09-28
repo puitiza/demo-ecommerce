@@ -58,31 +58,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker images
+      - name: Build and push Docker images (Multi-arch)
         run: |
           SERVICES=("server-gateway" "server-discovery" "server-config" "product-service" "order-service")
           VERSION="${{ env.new_version }}"
+          docker buildx create --use || true
           for SERVICE in "${SERVICES[@]}"; do
-            echo "Building and pushing $SERVICE:$VERSION and :latest"
-            docker build --build-arg MODULE=$SERVICE -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION .
-            docker push ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION
-            docker tag ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest
-            docker push ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest
+            echo "Building and pushing $SERVICE for amd64 + arm64"
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              --build-arg MODULE=$SERVICE \
+              -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION \
+              -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest \
+              --push .
           done
-
-      - name: Update docker-compose.yml
-        id: update-compose
-        run: |
-          chmod +x ./imports/scripts/update-compose.sh
-          ./imports/scripts/update-compose.sh "${{ env.new_version }}"
-
-      - name: Commit updated docker-compose.yml
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add docker-compose.yml
-          git commit -m "ci: update docker-compose.yml to ${{ env.new_version }}" --allow-empty || echo "No changes to commit"
-          git push
 
       - name: Create tag and GitHub Release
         env:

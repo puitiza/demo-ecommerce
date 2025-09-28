@@ -23,7 +23,7 @@ for SERVICE in "${SERVICES[@]}"; do
     yq eval "del(.services.\"$SERVICE\".image)" -i "$COMPOSE_FILE"
 
     # Add the new image key
-    yq eval ".services.\"$SERVICE\".image = \"ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION\"" -i "$COMPOSE_FILE"
+    yq eval ".services.\"$SERVICE\".image = \"ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest\"" -i "$COMPOSE_FILE"
 done
 
 echo "Updated $COMPOSE_FILE with version $VERSION"
