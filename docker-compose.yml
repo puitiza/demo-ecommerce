@@ -24,7 +24,7 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:v1.0.2
+    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:v1.0.3
   server-discovery:
     container_name: server-discovery
     ports:
@@ -37,7 +37,7 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:v1.0.2
+    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:v1.0.3
   server-config:
     container_name: server-config
     ports:
@@ -50,7 +50,7 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-server-config:v1.0.2
+    image: ghcr.io/puitiza/demo-ecommerce-server-config:v1.0.3
   order-service:
     container_name: order-service
     ports:
@@ -81,7 +81,7 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-order-service:v1.0.2
+    image: ghcr.io/puitiza/demo-ecommerce-order-service:v1.0.3
   product-service:
     container_name: product-service
     ports:
@@ -110,7 +110,7 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-product-service:v1.0.2
+    image: ghcr.io/puitiza/demo-ecommerce-product-service:v1.0.3
   jaeger:
     image: jaegertracing/all-in-one:1.73.0
     container_name: jaeger
