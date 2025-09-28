@@ -1,5 +1,6 @@
 services:
   server-gateway:
+    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:v1.0.1
     container_name: server-gateway
     image: ghcr.io/puitiza/demo-ecommerce-server-gateway:latest
     ports:
@@ -27,6 +28,7 @@ services:
     restart: unless-stopped
 
   server-discovery:
+    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:v1.0.1
     container_name: server-discovery
     image: ghcr.io/puitiza/demo-ecommerce-server-discovery:latest
     ports:
@@ -41,6 +43,7 @@ services:
     restart: unless-stopped
 
   server-config:
+    image: ghcr.io/puitiza/demo-ecommerce-server-config:v1.0.1
     container_name: server-config
     image: ghcr.io/puitiza/demo-ecommerce-server-config:latest
     ports:
@@ -55,6 +58,7 @@ services:
     restart: unless-stopped
 
   order-service:
+    image: ghcr.io/puitiza/demo-ecommerce-order-service:v1.0.1
     container_name: order-service
     image: ghcr.io/puitiza/demo-ecommerce-order-service:latest
     ports:
@@ -87,6 +91,7 @@ services:
     restart: unless-stopped
 
   product-service:
+    image: ghcr.io/puitiza/demo-ecommerce-product-service:v1.0.1
     container_name: product-service
     image: ghcr.io/puitiza/demo-ecommerce-product-service:latest
     ports:
