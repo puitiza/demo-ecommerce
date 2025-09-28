@@ -92,8 +92,10 @@ jobs:
           # Pull and start services
           docker compose pull
           docker compose up -d
-          # Wait a bit for services to start
-          sleep 60
+          # Wait longer for full stack startup (healthchecks, registrations)
+          sleep 120
           # Run verification script
           chmod +x verify.sh
           ./verify.sh || exit 1
+          # Cleanup
+          docker compose down

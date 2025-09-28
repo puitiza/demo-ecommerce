@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ./imports/scripts/update-compose.sh
 # Updates docker-compose.yml to use the specified version for the custom services.
-# Assumes the file has 'build:' blocks to remove and adds 'image:' with ghcr.io/puitiza/demo-ecommerce-<service>:<version>.
+# Uses yq to safely edit YAML without duplicates.
 
 set -e
 
@@ -9,16 +9,21 @@ VERSION=$1
 SERVICES=("server-gateway" "server-discovery" "server-config" "product-service" "order-service")
 COMPOSE_FILE="docker-compose.yml"
 
+# Install yq if not present (though it's available on ubuntu-latest)
+if ! command -v yq &> /dev/null; then
+    sudo snap install yq  # Fallback, but usually not needed in CI
+fi
+
 # Backup original file
 cp "$COMPOSE_FILE" "${COMPOSE_FILE}.bak"
 
-# Use sed to remove build blocks and add image for each service
 for SERVICE in "${SERVICES[@]}"; do
-    # Remove the entire build block (from 'build:' to the next service or end)
-    sed -i "/^  $SERVICE:/,/^(  [a-z-]*:)/s/^\(  $SERVICE:\)\n\(    build:\)\n\(      .*$\n\)*\(    .*\n\)*//" "$COMPOSE_FILE" || true
+    # Remove existing 'build' key and any 'image' key under the service
+    yq eval "del(.services.\"$SERVICE\".build)" -i "$COMPOSE_FILE"
+    yq eval "del(.services.\"$SERVICE\".image)" -i "$COMPOSE_FILE"
 
-    # Add image line after the service name
-    sed -i "/^  $SERVICE:/a\    image: ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION" "$COMPOSE_FILE"
+    # Add the new image key
+    yq eval ".services.\"$SERVICE\".image = \"ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION\"" -i "$COMPOSE_FILE"
 done
 
 echo "Updated $COMPOSE_FILE with version $VERSION"
