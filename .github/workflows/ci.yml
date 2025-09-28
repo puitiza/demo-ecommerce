@@ -19,13 +19,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0  # NEW: Full clone for complete tag/history access
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch all tags
         run: |
           git fetch --tags --prune
           # Verify tags are fetched
-          git tag --list | sort -V | tail -2
+          echo "Available tags:"
+          git tag --list | sort -V | tail -3  # Show last 3 for debug
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -37,8 +39,9 @@ jobs:
         id: extract-version
         run: |
           chmod +x ./imports/scripts/extract-version.sh
-          NEW_VERSION=$(./imports/scripts/extract-version.sh)
-          echo "extracted_version=$NEW_VERSION" >> $GITHUB_ENV
+          EXTRACTED=$(./imports/scripts/extract-version.sh)
+          echo "extracted_version=$EXTRACTED" >> $GITHUB_ENV
+          echo "Extracted latest tag: $EXTRACTED"  # NEW: Debug log
 
       - name: Increment version (patch)
         id: increment-version
@@ -46,6 +49,7 @@ jobs:
           chmod +x ./imports/scripts/increment-version.sh
           NEW_VERSION=$(./imports/scripts/increment-version.sh "${{ env.extracted_version }}")
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
+          echo "New version: $NEW_VERSION"  # NEW: Debug log
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -85,20 +89,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ env.new_version }}"
-          # Idempotent: Skip if tag already exists locally (after fetch)
+          # Idempotent tag: Skip if exists locally (after fetch)
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists, skipping creation"
           else
             git tag "$TAG"
             git push origin "$TAG"
           fi
-          # Create release (idempotent via gh CLI; it skips if exists)
-          gh release create "$TAG" --target "${{ github.sha }}" --notes "Published Docker images for the following services:
-          - server-gateway:$TAG
-          - server-discovery:$TAG
-          - server-config:$TAG
-          - product-service:$TAG
-          - order-service:$TAG"
+          # NEW: Idempotent release: Skip if release already exists
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Creating release for $TAG"
+            gh release create "$TAG" --target "${{ github.sha }}" --notes "Published Docker images for the following services:
+            - server-gateway:$TAG
+            - server-discovery:$TAG
+            - server-config:$TAG
+            - product-service:$TAG
+            - order-service:$TAG"
+          else
+            echo "Release for $TAG already exists, skipping creation"
+          fi
 
       - name: Validate deployment
         run: |
