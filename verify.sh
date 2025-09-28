@@ -13,16 +13,27 @@ curl -f http://localhost:8885/actuator/health || { echo "Config server health fa
 echo "All health checks passed!"
 
 echo "=== Testing Keycloak auth ==="
-# Fetch JWT token (update client_id, username, password as per your realm setup)
+# Keycloak config (from your realm: confidential client with service accounts)
+CLIENT_ID="gateway-service"
+CLIENT_SECRET="3rElcTH0OSsRZmdw9ubeaf9Pob6D7Ake"
+
+# Fetch JWT token via client_credentials (M2M, no user needed)
 TOKEN=$(curl -s -X POST http://localhost:8080/realms/demo-ecommerce/protocol/openid-connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=demo-client&username=user&password=pass&grant_type=password" | jq -r .access_token)
+  -d "grant_type=client_credentials" \
+  -d "client_id=$CLIENT_ID" \
+  -d "client_secret=$CLIENT_SECRET" | jq -r '.access_token')
 
 if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
-    echo "Auth token fetch failed"
+    echo "❌ Auth token fetch failed. Full response:"
+    curl -s -X POST http://localhost:8080/realms/demo-ecommerce/protocol/openid-connect/token \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "grant_type=client_credentials" \
+      -d "client_id=$CLIENT_ID" \
+      -d "client_secret=$CLIENT_SECRET"
     exit 1
 fi
-echo "Auth token obtained successfully (length: ${#TOKEN})"
+echo "✅ Auth token obtained successfully (length: ${#TOKEN})"
 
 echo "=== Testing API with auth (via Gateway) ==="
 curl -f -H "Authorization: Bearer $TOKEN" http://localhost:8090/api/products || { echo "Products API failed"; exit 1; }
