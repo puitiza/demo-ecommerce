@@ -1,39 +1,47 @@
 # ===========================================================
-# STAGE 1: Build ALL modules once (Turbo multi-module build)
+# STAGE 1: Turbo Build All Modules (Dependency Cache Layer)
 # ===========================================================
 FROM gradle:8.10.2-jdk17 AS builder
 WORKDIR /app
 ARG MODULE=server-gateway
 
-# 1) Copy only files needed for dependency resolution (cache-friendly)
+# 1) Copy only config files for dependency resolution
 COPY settings.gradle build.gradle gradle/ /app/
 
-# Copy child build.gradle for ALL modules, so Gradle sees their configs
+# Copy child build.gradle files for ALL modules so Gradle sees their config
 COPY server-gateway/build.gradle /app/server-gateway/build.gradle
 COPY server-discovery/build.gradle /app/server-discovery/build.gradle
 COPY server-config/build.gradle /app/server-config/build.gradle
 COPY product-service/build.gradle /app/product-service/build.gradle
 COPY order-service/build.gradle /app/order-service/build.gradle
 
-# 🔥 Resolve ALL dependencies (only once!)
+# 2) Resolve ALL dependencies once (cache layer)
 RUN gradle --no-daemon build -x test || true
 
-# 2) Now copy the FULL SOURCE ROOT (will reuse Gradle cache)
+# ===========================================================
+# STAGE 2: Full Build with bootJar (Per Module)
+# ===========================================================
+# Copy all sources
 COPY . /app
 
-# 🔥 Build ALL modules (only once)
-RUN gradle --no-daemon :${MODULE}:build -x test
+# Ensure the snippets directory exists (in case no tests generated yet)
+RUN mkdir -p /app/${MODULE}/build/generated-snippets
+
+# Build ONLY the selected module using bootJar (includes test & asciidoctor)
+RUN gradle --no-daemon :${MODULE}:bootJar
 
 # ===========================================================
-# STAGE 2: Runtime image (per module)
+# STAGE 3: Runtime Image
 # ===========================================================
 FROM eclipse-temurin:17-jdk
 ARG MODULE=server-gateway
 WORKDIR /app
 
-# Copy final jar of the selected module only
+# Copy the built JAR from the builder
 COPY --from=builder /app/${MODULE}/build/libs/*.jar app.jar
 
+# Expose port (dynamic based on module)
 ARG PORT=8090
 EXPOSE ${PORT}
+
 ENTRYPOINT ["java", "-jar", "app.jar"]
