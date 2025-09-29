@@ -58,20 +58,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker images (Optimized Dockerfile)
+      - name: Build and push Docker images (Optimized + Multi-Arch + Cache)
         run: |
           SERVICES=("server-gateway" "server-discovery" "server-config" "product-service" "order-service")
           VERSION="${{ env.new_version }}"
           docker buildx create --use || true
-
           for SERVICE in "${SERVICES[@]}"; do
-            echo "🚀 Building $SERVICE using Dockerfile.optimized"
+            echo "Building $SERVICE using Dockerfile.optimized (multi-arch)"
             docker buildx build \
-              --platform linux/amd64 \
+              --platform linux/amd64,linux/arm64 \
               --file Dockerfile.optimized \
               --build-arg MODULE=$SERVICE \
               -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION \
               -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest \
+              --cache-from type=registry,ref=ghcr.io/puitiza/demo-ecommerce-$SERVICE:cache \
+              --cache-to type=registry,ref=ghcr.io/puitiza/demo-ecommerce-$SERVICE:cache,mode=max \
               --push .
           done
 
