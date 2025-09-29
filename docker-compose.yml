@@ -1,6 +1,8 @@
 services:
   server-gateway:
     container_name: server-gateway
+    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:latest
+    platform: linux/amd64   # Compatible for any Windows, Linux or Mac developer.
 #    build:
 #      context: .
 #      dockerfile: Dockerfile.optimized
@@ -29,9 +31,10 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-server-gateway:latest
   server-discovery:
     container_name: server-discovery
+    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:latest
+    platform: linux/amd64   # Compatible for any Windows, Linux or Mac developer.
 #    build:
 #      context: .
 #      dockerfile: Dockerfile.optimized
@@ -47,9 +50,10 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-server-discovery:latest
   server-config:
     container_name: server-config
+    image: ghcr.io/puitiza/demo-ecommerce-server-config:latest
+    platform: linux/amd64   # Compatible for any Windows, Linux or Mac developer.
 #    build:
 #      context: .
 #      dockerfile: Dockerfile.optimized
@@ -65,9 +69,10 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-server-config:latest
   order-service:
     container_name: order-service
+    image: ghcr.io/puitiza/demo-ecommerce-order-service:latest
+    platform: linux/amd64   # Compatible for any Windows, Linux or Mac developer.
 #    build:
 #      context: .
 #      dockerfile: Dockerfile.optimized
@@ -101,9 +106,10 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-order-service:latest
   product-service:
     container_name: product-service
+    image: ghcr.io/puitiza/demo-ecommerce-product-service:latest
+    platform: linux/amd64   # Compatible for any Windows, Linux or Mac developer.
 #    build:
 #      context: .
 #      dockerfile: Dockerfile.optimized
@@ -135,7 +141,6 @@ services:
     networks:
       - microservices-net
     restart: unless-stopped
-    image: ghcr.io/puitiza/demo-ecommerce-product-service:latest
   jaeger:
     image: jaegertracing/all-in-one:1.73.0
     container_name: jaeger
@@ -307,6 +312,7 @@ services:
   sonar-analysis:
     image: eclipse-temurin:17-jdk
     container_name: sonar-analysis
+    profiles: ["analysis"]
     working_dir: /workspace
     environment:
       SONAR_HOST_URL: "http://sonarqube:9000"

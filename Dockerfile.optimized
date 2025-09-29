@@ -9,11 +9,12 @@ ARG MODULE=server-gateway
 COPY settings.gradle build.gradle gradle/ /app/
 
 # Copy child build.gradle files for ALL modules so Gradle sees their config
-COPY server-gateway/build.gradle /app/server-gateway/build.gradle
-COPY server-discovery/build.gradle /app/server-discovery/build.gradle
-COPY server-config/build.gradle /app/server-config/build.gradle
-COPY product-service/build.gradle /app/product-service/build.gradle
-COPY order-service/build.gradle /app/order-service/build.gradle
+#COPY server-gateway/build.gradle /app/server-gateway/build.gradle
+#COPY server-discovery/build.gradle /app/server-discovery/build.gradle
+#COPY server-config/build.gradle /app/server-config/build.gradle
+#COPY product-service/build.gradle /app/product-service/build.gradle
+#COPY order-service/build.gradle /app/order-service/build.gradle
+COPY */build.gradle /app/
 
 # 2) Resolve ALL dependencies once (cache layer)
 RUN gradle --no-daemon build -x test || true

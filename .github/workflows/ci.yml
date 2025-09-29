@@ -103,11 +103,9 @@ jobs:
 
       - name: Validate deployment
         run: |
-          # Pull and start services
+          # Pull and start services (without sonar-analysis)
           docker compose pull
           docker compose up -d
-          # Wait longer for full stack startup (healthchecks, registrations)
-          sleep 120
           # Run verification script
           chmod +x verify.sh
           ./verify.sh || exit 1
