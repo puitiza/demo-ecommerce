@@ -22,7 +22,7 @@ RUN gradle --no-daemon build -x test || true
 COPY . /app
 
 # 🔥 Build ALL modules (only once)
-RUN gradle --no-daemon build -x test
+RUN gradle --no-daemon :${MODULE}:build -x test
 
 # ===========================================================
 # STAGE 2: Runtime image (per module)
