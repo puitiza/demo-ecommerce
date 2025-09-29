@@ -1,0 +1,69 @@
+name: Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+
+    services:
+      sonarqube:
+        image: sonarqube:25.9.0.112764-community
+        ports: ["9000:9000"]
+        env:
+          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: true
+          SONARQUBE_ADMIN_PASSWORD: "MySecurePoCPass123!"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Wait for SonarQube
+        run: |
+          echo "Waiting for SonarQube to start..."
+          timeout 300s bash -c 'until curl -s http://localhost:9000/api/system/status | grep -q "UP"; do sleep 10; done'
+          echo "SonarQube is ready!"
+
+      - name: Generate Token
+        id: token
+        run: |
+          response=$(curl -s -u "admin:MySecurePoCPass123!" \
+            -X POST "http://localhost:9000/api/user_tokens/generate" \
+            -d "name=ci-$(date +%s)")
+          token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+          echo "token=$token" >> $GITHUB_OUTPUT
+          echo "SONAR_TOKEN=$token" >> $GITHUB_ENV
+
+      - name: Run Analysis
+        env:
+          SONAR_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          ./gradlew clean test integrationTest jacocoTestReport sonar
+
+      - name: Check Quality Gate
+        run: |
+          echo "Waiting for analysis completion..."
+          sleep 30
+          
+          status=$(curl -s -u "${{ steps.token.outputs.token }}:" \
+            "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
+            | jq -r '.projectStatus.status')
+          
+          echo "Quality Gate Status: $status"
+          
+          if [ "$status" != "OK" ]; then
+            echo "❌ Quality Gate failed! Please check SonarQube for details."
+            exit 1
+          else
+            echo "✅ Quality Gate passed!"
+          fi
