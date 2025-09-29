@@ -106,6 +106,14 @@ jobs:
           # Pull and start services (without sonar-analysis)
           docker compose pull
           docker compose up -d
+          # Wait critical services
+          SERVICES=("server-gateway" "order-service" "product-service")
+          for SERVICE in "${SERVICES[@]}"; do
+            until [ "$(docker inspect -f '{{.State.Health.Status}}' $SERVICE 2>/dev/null)" = "healthy" ]; do
+              echo "$SERVICE not healthy yet..."
+              sleep 5
+            done
+          done
           # Run verification script
           chmod +x verify.sh
           ./verify.sh || exit 1
