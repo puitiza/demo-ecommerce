@@ -58,16 +58,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker images
+      - name: Build and push Docker images (Optimized Dockerfile)
         run: |
           SERVICES=("server-gateway" "server-discovery" "server-config" "product-service" "order-service")
           VERSION="${{ env.new_version }}"
+          docker buildx create --use || true
+
           for SERVICE in "${SERVICES[@]}"; do
-            echo "Building and pushing $SERVICE:$VERSION and :latest"
-            docker build --build-arg MODULE=$SERVICE -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION .
-            docker push ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION
-            docker tag ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest
-            docker push ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest
+            echo "🚀 Building $SERVICE using Dockerfile.optimized"
+            docker buildx build \
+              --platform linux/amd64 \
+              --file Dockerfile.optimized \
+              --build-arg MODULE=$SERVICE \
+              -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:$VERSION \
+              -t ghcr.io/puitiza/demo-ecommerce-$SERVICE:latest \
+              --push .
           done
 
       - name: Create tag and GitHub Release

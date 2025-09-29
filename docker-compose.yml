@@ -1,6 +1,11 @@
 services:
   server-gateway:
     container_name: server-gateway
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.optimized
+#      args:
+#        MODULE: server-gateway
     ports:
       - "8090:8090"
     depends_on:
@@ -27,6 +32,11 @@ services:
     image: ghcr.io/puitiza/demo-ecommerce-server-gateway:latest
   server-discovery:
     container_name: server-discovery
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.optimized
+#      args:
+#        MODULE: server-discovery
     ports:
       - "8761:8761"
     healthcheck:
@@ -40,6 +50,11 @@ services:
     image: ghcr.io/puitiza/demo-ecommerce-server-discovery:latest
   server-config:
     container_name: server-config
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.optimized
+#      args:
+#        MODULE: server-config
     ports:
       - "8885:8885"
     healthcheck:
@@ -53,6 +68,11 @@ services:
     image: ghcr.io/puitiza/demo-ecommerce-server-config:latest
   order-service:
     container_name: order-service
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.optimized
+#      args:
+#        MODULE: order-service
     ports:
       - "8082:8082"
     depends_on:
@@ -84,6 +104,11 @@ services:
     image: ghcr.io/puitiza/demo-ecommerce-order-service:latest
   product-service:
     container_name: product-service
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.optimized
+#      args:
+#        MODULE: product-service
     ports:
       - "8081:8081"
     depends_on:

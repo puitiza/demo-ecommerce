@@ -1,0 +1,39 @@
+# ===========================================================
+# STAGE 1: Build ALL modules once (Turbo multi-module build)
+# ===========================================================
+FROM gradle:8.10.2-jdk17 AS builder
+WORKDIR /app
+ARG MODULE=server-gateway
+
+# 1) Copy only files needed for dependency resolution (cache-friendly)
+COPY settings.gradle build.gradle gradle/ /app/
+
+# Copy child build.gradle for ALL modules, so Gradle sees their configs
+COPY server-gateway/build.gradle /app/server-gateway/build.gradle
+COPY server-discovery/build.gradle /app/server-discovery/build.gradle
+COPY server-config/build.gradle /app/server-config/build.gradle
+COPY product-service/build.gradle /app/product-service/build.gradle
+COPY order-service/build.gradle /app/order-service/build.gradle
+
+# 🔥 Resolve ALL dependencies (only once!)
+RUN gradle --no-daemon build -x test || true
+
+# 2) Now copy the FULL SOURCE ROOT (will reuse Gradle cache)
+COPY . /app
+
+# 🔥 Build ALL modules (only once)
+RUN gradle --no-daemon build -x test
+
+# ===========================================================
+# STAGE 2: Runtime image (per module)
+# ===========================================================
+FROM eclipse-temurin:17-jdk
+ARG MODULE=server-gateway
+WORKDIR /app
+
+# Copy final jar of the selected module only
+COPY --from=builder /app/${MODULE}/build/libs/*.jar app.jar
+
+ARG PORT=8090
+EXPOSE ${PORT}
+ENTRYPOINT ["java", "-jar", "app.jar"]
