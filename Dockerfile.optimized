@@ -7,28 +7,20 @@ ARG MODULE=server-gateway
 
 # 1) Copy only config files for dependency resolution
 COPY settings.gradle build.gradle gradle/ /app/
-
-# Copy child build.gradle files for ALL modules so Gradle sees their config
-#COPY server-gateway/build.gradle /app/server-gateway/build.gradle
-#COPY server-discovery/build.gradle /app/server-discovery/build.gradle
-#COPY server-config/build.gradle /app/server-config/build.gradle
-#COPY product-service/build.gradle /app/product-service/build.gradle
-#COPY order-service/build.gradle /app/order-service/build.gradle
 COPY */build.gradle /app/
 
-# 2) Resolve ALL dependencies once (cache layer)
-RUN gradle --no-daemon build -x test || true
+# 2) Resolve dependencies SILENTLY without failing the build
+RUN gradle --no-daemon dependencies --quiet > /dev/null 2>&1 || true
 
 # ===========================================================
 # STAGE 2: Full Build with bootJar (Per Module)
 # ===========================================================
-# Copy all sources
 COPY . /app
 
 # Ensure the snippets directory exists (in case no tests generated yet)
 RUN mkdir -p /app/${MODULE}/build/generated-snippets
 
-# Build ONLY the selected module using bootJar (includes test & asciidoctor)
+# Build ONLY the selected module
 RUN gradle --no-daemon :${MODULE}:bootJar
 
 # ===========================================================
@@ -38,10 +30,8 @@ FROM eclipse-temurin:17-jdk
 ARG MODULE=server-gateway
 WORKDIR /app
 
-# Copy the built JAR from the builder
 COPY --from=builder /app/${MODULE}/build/libs/*.jar app.jar
 
-# Expose port (dynamic based on module)
 ARG PORT=8090
 EXPOSE ${PORT}
 
