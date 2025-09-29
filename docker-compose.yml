@@ -28,6 +28,12 @@ services:
       CONFIG_ENDPOINT: http://server-config:8885
       REDIS_ENDPOINT: redis://redis:6379
       SPRING_PROFILES_ACTIVE: docker
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8090/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     networks:
       - microservices-net
     restart: unless-stopped
