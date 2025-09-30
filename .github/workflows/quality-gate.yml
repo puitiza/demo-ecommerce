@@ -1,0 +1,123 @@
+name: PR Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # To avoid "Shallow Clone" in Sonarqube
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Start SonarQube
+        run: |
+          echo "🚀 Starting SonarQube..."
+          docker run -d --name sonarqube \
+            -p 9000:9000 \
+            -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+            sonarqube:25.9.0.112764-community
+          
+          echo "⏳ Waiting for SonarQube to be healthy..."
+          # Health check en lugar de sleep fijo
+          timeout 300s bash -c '
+            while true; do
+              if curl -s http://localhost:9000/api/system/status | grep -q "UP"; then
+                echo "✅ SonarQube is UP and ready"
+                break
+              fi
+              echo "⏰ SonarQube not ready yet, waiting..."
+              sleep 15
+            done
+          '
+
+      - name: Initialize SonarQube
+        run: |
+          echo "🏗️ Initializing SonarQube..."          
+          sleep 10
+          
+          echo "📝 Creating project..."
+          curl -s -u "admin:admin" -X POST "http://localhost:9000/api/projects/create" \
+            -d "project=demo-ecommerce" -d "name=Demo E-commerce"
+          
+          echo ""
+          echo "🔑 Generating token..."
+          response=$(curl -s -u "admin:admin" \
+            -X POST "http://localhost:9000/api/user_tokens/generate" \
+            -d "name=github-actions-token")
+          
+          token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+          mkdir -p imports/sonarqube
+          echo "$token" > imports/sonarqube/sonar-token.txt
+          
+          echo ""
+          echo "✅ SonarQube initialized successfully"
+          echo "   Project: demo-ecommerce"
+          echo "   Token: ${token:0:10}..."
+
+      - name: Run SonarQube Analysis
+        run: |
+          echo "🔍 Running SonarQube analysis..."
+          ./gradlew clean test integrationTest jacocoTestReport sonar
+
+      - name: Check Quality Gate Status
+        run: |
+          echo "📊 Checking Quality Gate status..."
+          
+          # Intelligent wait with polling
+          echo "⏳ Waiting for analysis to complete..."
+          for i in {1..12}; do
+            TOKEN=$(cat imports/sonarqube/sonar-token.txt)
+            status=$(curl -s -u "$TOKEN:" \
+              "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
+              | jq -r '.projectStatus.status  // "PENDING"')
+          
+            if [ "$status" != "PENDING" ] && [ "$status" != "NONE" ]; then
+              echo "✅ Analysis completed with status: $status"
+              break
+            fi
+          
+            if [ $i -eq 12 ]; then
+              echo "❌ Analysis timeout after 60 seconds"
+              exit 1
+            fi
+          
+            echo "⏰ Analysis still in progress... ($i/12)"
+            sleep 5
+          done
+          
+          # Final Verification of Quality Gate
+          TOKEN=$(cat imports/sonarqube/sonar-token.txt)
+          final_status=$(curl -s -u "$TOKEN:" \
+            "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
+            | jq -r '.projectStatus.status')
+          
+          echo ""
+          echo "🎯 FINAL QUALITY GATE STATUS: $final_status"
+          echo ""
+          
+          if [ "$final_status" = "OK" ]; then
+            echo "✅ QUALITY GATE PASSED - All quality standards met!"
+          else
+            echo "❌ QUALITY GATE FAILED"
+            echo "💡 Check the detailed report at: http://localhost:9000/dashboard?id=demo-ecommerce"
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "🧹 Cleaning up SonarQube container..."
+          docker stop sonarqube 2>/dev/null || true
+          docker rm sonarqube 2>/dev/null || true
+          echo "✅ Cleanup completed"

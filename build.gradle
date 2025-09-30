@@ -87,15 +87,22 @@ sonarqube {
         property "sonar.coverage.exclusions", "**/*Application*.java, **/config/**"
 
         // Conditional Route for Token: Local Check VS Docker
-        def tokenPath = "imports/sonarqube/sonar-token.txt"
-        def tokenFile = file(tokenPath)
-        if (!tokenFile.exists()) {
-            tokenPath = "../imports/sonarqube/sonar-token.txt"
-            tokenFile = file(tokenPath)
+        def sonarToken = System.getenv("SONAR_TOKEN")
+        if (sonarToken) {
+            property "sonar.token", sonarToken
+            println "✅ Using Sonar token from environment"
+        } else {
+            def tokenPath = "imports/sonarqube/sonar-token.txt"
+            def tokenFile = file(tokenPath)
+            if (!tokenFile.exists()) {
+                tokenPath = "../imports/sonarqube/sonar-token.txt"
+                tokenFile = file(tokenPath)
+            }
+            if (!tokenFile.exists()) {
+                throw new GradleException("SonarQube token not found. Run 'docker-compose up sonarqube' first")
+            }
+            property "sonar.token", tokenFile.text.trim()
+            println "✅ Using Sonar token from file"
         }
-        if (!tokenFile.exists()) {
-            throw new GradleException("Sonar token file not found. Run docker-compose up first to generate it, or create it manually.")
-        }
-        property "sonar.token", tokenFile.text.trim()
     }
 }
