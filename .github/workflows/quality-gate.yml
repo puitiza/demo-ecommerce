@@ -1,4 +1,4 @@
-name: Quality Gate
+name: Quality Gate Simple
 
 on:
   pull_request:
@@ -18,44 +18,59 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Start SonarQube with init script
+      - name: Start SonarQube
         run: |
-          echo "🚀 Starting SonarQube with initialization..."
-          docker-compose up -d sonarqube
+          echo "🚀 Starting SonarQube..."
+          docker run -d --name sonarqube \
+            -p 9000:9000 \
+            -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+            -e SONARQUBE_ADMIN_PASSWORD="MySecurePoCPass123!" \
+            sonarqube:25.9.0.112764-community
           
-          echo "⏳ Waiting for SonarQube to be ready..."
-          timeout 180s bash -c 'until curl -s http://localhost:9000/api/system/status | grep -q "UP"; do sleep 10; done'
+          echo "⏳ Waiting for SonarQube..."
+          sleep 120
+
+      - name: Initialize SonarQube Manually
+        run: |
+          echo "🏗️ Initializing SonarQube..."
           
-          echo "✅ SonarQube is ready with project and token initialized"
+          # Wait for API to be ready
+          until curl -s http://localhost:9000/api/system/status | grep -q "UP"; do sleep 10; done
+          sleep 30
+          
+          # Change password
+          curl -u "admin:admin" -X POST "http://localhost:9000/api/users/change_password" \
+            -d "login=admin" -d "previousPassword=admin" -d "password=MySecurePoCPass123!"
+          
+          # Create project
+          curl -u "admin:MySecurePoCPass123!" -X POST "http://localhost:9000/api/projects/create" \
+            -d "project=demo-ecommerce" -d "name=Demo E-commerce"
+          
+          # Generate token
+          response=$(curl -s -u "admin:MySecurePoCPass123!" \
+            -X POST "http://localhost:9000/api/user_tokens/generate" \
+            -d "name=github-actions-token")
+          
+          token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+          mkdir -p imports/sonarqube
+          echo "$token" > imports/sonarqube/sonar-token.txt
+          
+          echo "✅ SonarQube initialized"
 
       - name: Run Analysis
         run: |
-          echo "🔍 Running SonarQube analysis..."
-          # El token ya está creado por init.sh en imports/sonarqube/sonar-token.txt
           ./gradlew clean test integrationTest jacocoTestReport sonar
 
       - name: Check Quality Gate
         run: |
-          echo "📊 Checking Quality Gate..."
           sleep 30
-          
-          # Lee el token del archivo que creó init.sh
           TOKEN=$(cat imports/sonarqube/sonar-token.txt)
-          
-          status=$(curl -s -u "$TOKEN:" \
+          curl -s -u "$TOKEN:" \
             "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
-            | jq -r '.projectStatus.status')
-          
-          echo "Quality Gate Status: $status"
-          
-          if [ "$status" != "OK" ]; then
-            echo "❌ Quality Gate FAILED"
-            exit 1
-          else
-            echo "✅ Quality Gate PASSED"
-          fi
+            | jq -r '.projectStatus.status' | grep -q "OK"
 
       - name: Cleanup
         if: always()
         run: |
-          docker-compose down
+          docker stop sonarqube || true
+          docker rm sonarqube || true
