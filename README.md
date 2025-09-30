@@ -10,7 +10,7 @@ Minimal **Spring Boot Microservices PoC** with **production-like integrations**:
 * **Monitoring**: Prometheus + Grafana
 * **Logging**: Loki + Promtail (structured logs in Grafana)
 * **Caching + Rate Limiting**: Redis (Gateway `RequestRateLimiter`)
-* **CI/CD**: GitHub Actions with automated versioning & container registry
+* **CI/CD**: GitHub Actions with Quality Gates & Automated Releases
 * **Quality**: SonarQube + Jacoco + Integration Tests (Testcontainers)
 * **API Docs**: Spring REST Docs auto-packaged in JARs
 
@@ -79,6 +79,48 @@ Spring REST Docs are auto-generated and packaged with each service:
 
 ---
 
+## 🔄 CI/CD Pipeline
+
+### **Automated Quality Gates & Releases**
+
+```mermaid
+graph LR
+    A[Feature Branch] --> B[PR Created]
+    B --> C[Quality Gate Runs]
+    C --> D{Quality Gate}
+    D -->|✅ PASS| E[PR Ready for Merge]
+    D -->|❌ FAIL| F[PR Blocked]
+    E --> G[Merge to Main]
+    G --> H[Release Pipeline]
+    H --> I[Build & Tag Images]
+    I --> J[Push to GHCR]
+    J --> K[Deploy & Validate]
+```
+
+### **Workflow Structure**
+```
+.github/workflows/
+├── pr-quality-gate.yml    # ✅ Quality validation for PRs
+└── main-release.yml       # ✅ Release pipeline for main
+```
+
+### **Quality Gate Features**
+- **SonarQube Analysis**: Code quality, coverage, and security checks
+- **Test Coverage**: Unit + integration tests with Jacoco reports
+- **Auto-blocking**: PRs cannot be merged if quality standards are not met
+- **Fast Feedback**: Developers get immediate quality feedback
+
+### **Release Pipeline Features**
+- **Auto-versioning**: Semantic version increment based on tags
+- **Multi-architecture**: AMD64 Docker images
+- **Optimized Builds**: Shared dependency caching across microservices
+- **Registry Publishing**: Automatic push to GitHub Container Registry
+- **Deployment Validation**: Full stack testing before completion
+
+**Images available at:** `ghcr.io/puitiza/demo-ecommerce-*`
+
+---
+
 ## 🔗 Request Flow with TraceID + JWT
 
 ### Example: `GET /order/test`
@@ -116,7 +158,7 @@ Spring REST Docs are auto-generated and packaged with each service:
 ✅ **Centralized configuration** management  
 ✅ **Health checks** and metrics exposure  
 ✅ **API documentation** auto-generation  
-✅ **CI/CD pipeline** with automated versioning
+✅ **CI/CD pipeline** with quality gates & automated releases
 
 ---
 
@@ -167,26 +209,6 @@ curl -X POST 'http://keycloak:8080/realms/demo-ecommerce/protocol/openid-connect
 - `429 Too Many Requests` when limit exceeded
 - Headers: `X-RateLimit-Remaining`, `X-RateLimit-Replenish-Rate`, `X-RateLimit-Burst-Capacity`
 - Redis keys: `request_rate_limiter:*` (state stored in Redis, not memory)
-
----
-
-## 📦 CI/CD Pipeline
-
-### Automated Workflow
-- **Trigger**: Push to `main` branch or pull requests
-- **Versioning**: Automatic semantic version increment
-- **Build**: Optimized multi-stage Docker builds
-- **Testing**: Automated deployment validation
-- **Publishing**: GitHub Container Registry with `:latest` and version tags
-- **Release**: Automated GitHub releases with changelog
-
-### Build Optimization
-The CI uses an optimized Docker build strategy:
-- **Shared dependency caching** across all microservices
-- **Multi-architecture** support (AMD64)
-- **Efficient layer caching** for faster builds
-
-**Images available at:** `ghcr.io/puitiza/demo-ecommerce-*`
 
 ---
 

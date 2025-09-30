@@ -3,6 +3,10 @@ name: Main Release Pipeline
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '**.md'
 
 permissions:
   contents: write  # For committing updates to docker-compose.yml and creating tags
