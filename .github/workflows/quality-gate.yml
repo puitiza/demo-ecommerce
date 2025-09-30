@@ -1,4 +1,4 @@
-name: Quality Gate Simple
+name: Quality Gate
 
 on:
   pull_request:
@@ -9,8 +9,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout with full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Para evitar "Shallow clone" en SonarQube
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -24,30 +26,36 @@ jobs:
           docker run -d --name sonarqube \
             -p 9000:9000 \
             -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
-            -e SONARQUBE_ADMIN_PASSWORD="MySecurePoCPass123!" \
             sonarqube:25.9.0.112764-community
           
-          echo "⏳ Waiting for SonarQube..."
-          sleep 120
+          echo "⏳ Waiting for SonarQube to be healthy..."
+          # Health check en lugar de sleep fijo
+          timeout 300s bash -c '
+            while true; do
+              if curl -s http://localhost:9000/api/system/status | grep -q "UP"; then
+                echo "✅ SonarQube is UP and ready"
+                break
+              fi
+              echo "⏰ SonarQube not ready yet, waiting..."
+              sleep 15
+            done
+          '
 
-      - name: Initialize SonarQube Manually
+      - name: Initialize SonarQube
         run: |
+          echo ""
           echo "🏗️ Initializing SonarQube..."
           
-          # Wait for API to be ready
-          until curl -s http://localhost:9000/api/system/status | grep -q "UP"; do sleep 10; done
-          sleep 30
+          # Pequeña espera adicional para asegurar que todos los servicios estén listos
+          sleep 10
           
-          # Change password
-          curl -u "admin:admin" -X POST "http://localhost:9000/api/users/change_password" \
-            -d "login=admin" -d "previousPassword=admin" -d "password=MySecurePoCPass123!"
-          
-          # Create project
-          curl -u "admin:MySecurePoCPass123!" -X POST "http://localhost:9000/api/projects/create" \
+          # NOTA: No cambiamos password, usamos el default 'admin'
+          echo "📝 Creating project..."
+          curl -s -u "admin:admin" -X POST "http://localhost:9000/api/projects/create" \
             -d "project=demo-ecommerce" -d "name=Demo E-commerce"
           
-          # Generate token
-          response=$(curl -s -u "admin:MySecurePoCPass123!" \
+          echo "🔑 Generating token..."
+          response=$(curl -s -u "admin:admin" \
             -X POST "http://localhost:9000/api/user_tokens/generate" \
             -d "name=github-actions-token")
           
@@ -55,22 +63,67 @@ jobs:
           mkdir -p imports/sonarqube
           echo "$token" > imports/sonarqube/sonar-token.txt
           
-          echo "✅ SonarQube initialized"
+          echo ""
+          echo "✅ SonarQube initialized successfully"
+          echo "   Project: demo-ecommerce"
+          echo "   Token: ${token:0:10}..."
 
-      - name: Run Analysis
+      - name: Run SonarQube Analysis
         run: |
+          echo ""
+          echo "🔍 Running SonarQube analysis..."
           ./gradlew clean test integrationTest jacocoTestReport sonar
 
-      - name: Check Quality Gate
+      - name: Check Quality Gate Status
         run: |
-          sleep 30
+          echo ""
+          echo "📊 Checking Quality Gate status..."
+          
+          # Espera inteligente con polling
+          echo "⏳ Waiting for analysis to complete..."
+          for i in {1..12}; do
+            TOKEN=$(cat imports/sonarqube/sonar-token.txt)
+            status=$(curl -s -u "$TOKEN:" \
+              "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
+              | jq -r '.projectStatus.status  // "PENDING"')
+          
+            if [ "$status" != "PENDING" ] && [ "$status" != "NONE" ]; then
+              echo "✅ Analysis completed with status: $status"
+              break
+            fi
+          
+            if [ $i -eq 12 ]; then
+              echo "❌ Analysis timeout after 60 seconds"
+              exit 1
+            fi
+          
+            echo "⏰ Analysis still in progress... ($i/12)"
+            sleep 5
+          done
+          
+          # Verificación final del Quality Gate
           TOKEN=$(cat imports/sonarqube/sonar-token.txt)
-          curl -s -u "$TOKEN:" \
+          final_status=$(curl -s -u "$TOKEN:" \
             "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
-            | jq -r '.projectStatus.status' | grep -q "OK"
+            | jq -r '.projectStatus.status')
+          
+          echo ""
+          echo "🎯 FINAL QUALITY GATE STATUS: $final_status"
+          echo ""
+          
+          if [ "$final_status" = "OK" ]; then
+            echo "✅ QUALITY GATE PASSED - All quality standards met!"
+          else
+            echo "❌ QUALITY GATE FAILED"
+            echo "💡 Check the detailed report at: http://localhost:9000/dashboard?id=demo-ecommerce"
+            exit 1
+          fi
 
       - name: Cleanup
         if: always()
         run: |
-          docker stop sonarqube || true
-          docker rm sonarqube || true
+          echo ""
+          echo "🧹 Cleaning up SonarQube container..."
+          docker stop sonarqube 2>/dev/null || true
+          docker rm sonarqube 2>/dev/null || true
+          echo "✅ Cleanup completed"
