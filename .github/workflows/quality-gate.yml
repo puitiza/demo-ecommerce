@@ -28,31 +28,75 @@ jobs:
 
       - name: Wait for SonarQube
         run: |
-          echo "Waiting for SonarQube..."
-          sleep 60  # Simple wait
-          curl -s http://localhost:9000/api/system/status
+          echo "⏳ Waiting for SonarQube to be fully ready..."
+          # Wait longer and check multiple times
+          sleep 90
+          echo "✅ SonarQube should be ready now"
 
       - name: Generate Token
         id: token
         run: |
+          echo "🔑 Generating SonarQube token..."
+          
+          # Wait a bit more
           sleep 10
-          response=$(curl -s -u "admin:MySecurePoCPass123!" \
-            -X POST "http://localhost:9000/api/user_tokens/generate" \
-            -d "name=ci-$(date +%s)")
-          echo "Response: $response"
-          token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
-          echo "token=$token" >> $GITHUB_OUTPUT
+          
+          # Try multiple times to generate token
+          for attempt in {1..3}; do
+            echo "Attempt $attempt to generate token..."
+          
+            response=$(curl -s -u "admin:MySecurePoCPass123!" \
+              -X POST "http://localhost:9000/api/user_tokens/generate" \
+              -d "name=ci-$(date +%s)" \
+              -H "Content-Type: application/x-www-form-urlencoded")
+          
+            echo "Response: $response"
+          
+            if [ -n "$response" ] && echo "$response" | grep -q '"token"'; then
+              token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+              echo "✅ Token generated: ${token:0:10}..."
+              echo "token=$token" >> $GITHUB_OUTPUT
+              break
+            else
+              echo "❌ Attempt $attempt failed, waiting..."
+              sleep 10
+            fi
+          done
+          
+          if [ -z "$token" ]; then
+            echo "❌ All token generation attempts failed"
+            exit 1
+          fi
+
+      - name: Create token file for Gradle
+        run: |
+          echo "💾 Creating token file for Gradle..."
+          mkdir -p imports/sonarqube
+          echo "${{ steps.token.outputs.token }}" > imports/sonarqube/sonar-token.txt
+          echo "✅ Token file created"
 
       - name: Run Analysis
         env:
           SONAR_TOKEN: ${{ steps.token.outputs.token }}
           SONAR_HOST_URL: "http://localhost:9000"
         run: |
+          echo "🔍 Running SonarQube analysis..."
           ./gradlew clean test integrationTest jacocoTestReport sonar
 
       - name: Check Quality Gate
         run: |
+          echo "📊 Checking Quality Gate..."
           sleep 30
-          curl -s -u "${{ steps.token.outputs.token }}:" \
+          
+          status=$(curl -s -u "${{ steps.token.outputs.token }}:" \
             "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
-            | jq -r '.projectStatus.status' | grep -q "OK"
+            | jq -r '.projectStatus.status')
+          
+          echo "Quality Gate Status: $status"
+          
+          if [ "$status" != "OK" ]; then
+            echo "❌ Quality Gate FAILED"
+            exit 1
+          else
+            echo "✅ Quality Gate PASSED"
+          fi
