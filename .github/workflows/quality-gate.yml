@@ -3,8 +3,6 @@ name: Quality Gate
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
 
 jobs:
   quality-check:
@@ -30,76 +28,31 @@ jobs:
 
       - name: Wait for SonarQube
         run: |
-          echo "⏳ Waiting for SonarQube to start..."
-          for i in {1..30}; do
-            if curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; then
-              echo "✅ SonarQube is ready!"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "❌ SonarQube failed to start in time"
-              exit 1
-            fi
-            sleep 10
-          done
+          echo "Waiting for SonarQube..."
+          sleep 60  # Simple wait
+          curl -s http://localhost:9000/api/system/status
 
-      - name: Generate SonarQube Token
-        id: sonar-token
+      - name: Generate Token
+        id: token
         run: |
-          echo "🔑 Generating SonarQube token..."
-          
-          # Generate unique token name
-          TOKEN_NAME="github-actions-$(date +%s)"
-          
-          # Generate token via API
-          RESPONSE=$(curl -s -u "admin:MySecurePoCPass123!" \
+          sleep 10
+          response=$(curl -s -u "admin:MySecurePoCPass123!" \
             -X POST "http://localhost:9000/api/user_tokens/generate" \
-            -d "name=$TOKEN_NAME")
-          
-          # Extract token from response
-          TOKEN=$(echo "$RESPONSE" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
-          
-          if [ -z "$TOKEN" ]; then
-            echo "❌ Failed to generate token"
-            echo "Response: $RESPONSE"
-            exit 1
-          fi
-          
-          echo "✅ Token generated: ${TOKEN:0:10}..."
-          echo "token=$TOKEN" >> $GITHUB_OUTPUT
-          echo "SONAR_TOKEN=$TOKEN" >> $GITHUB_ENV
+            -d "name=ci-$(date +%s)")
+          echo "Response: $response"
+          token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+          echo "token=$token" >> $GITHUB_OUTPUT
 
-      - name: Run SonarQube Analysis
+      - name: Run Analysis
         env:
-          SONAR_TOKEN: ${{ steps.sonar-token.outputs.token }}
+          SONAR_TOKEN: ${{ steps.token.outputs.token }}
           SONAR_HOST_URL: "http://localhost:9000"
         run: |
-          echo "🔍 Running SonarQube analysis..."
           ./gradlew clean test integrationTest jacocoTestReport sonar
 
-      - name: Check Quality Gate Status
+      - name: Check Quality Gate
         run: |
-          echo "📊 Checking Quality Gate..."
-          sleep 25  # Wait for analysis to complete
-          
-          # Check quality gate status
-          STATUS=$(curl -s -u "${{ steps.sonar-token.outputs.token }}:" \
+          sleep 30
+          curl -s -u "${{ steps.token.outputs.token }}:" \
             "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
-            | jq -r '.projectStatus.status')
-          
-          echo "Quality Gate Status: $STATUS"
-          
-          if [ "$STATUS" != "OK" ]; then
-            echo "❌ Quality Gate FAILED - Check SonarQube for details"
-            exit 1
-          else
-            echo "✅ Quality Gate PASSED"
-          fi
-
-      - name: Cleanup Token
-        if: always()
-        run: |
-          echo "🧹 Cleaning up temporary token..."
-          # Note: In real scenario, you might want to keep tokens for audit
-          # But for security, we clean them up
-          echo "Token would be revoked here"
+            | jq -r '.projectStatus.status' | grep -q "OK"
