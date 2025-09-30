@@ -1,4 +1,4 @@
-name: Quality Gate
+name: PR Quality Gate
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout with full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Para evitar "Shallow clone" en SonarQube
+          fetch-depth: 0  # To avoid "Shallow Clone" in Sonarqube
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -43,17 +43,14 @@ jobs:
 
       - name: Initialize SonarQube
         run: |
-          echo ""
-          echo "🏗️ Initializing SonarQube..."
-          
-          # Pequeña espera adicional para asegurar que todos los servicios estén listos
+          echo "🏗️ Initializing SonarQube..."          
           sleep 10
           
-          # NOTA: No cambiamos password, usamos el default 'admin'
           echo "📝 Creating project..."
           curl -s -u "admin:admin" -X POST "http://localhost:9000/api/projects/create" \
             -d "project=demo-ecommerce" -d "name=Demo E-commerce"
           
+          echo ""
           echo "🔑 Generating token..."
           response=$(curl -s -u "admin:admin" \
             -X POST "http://localhost:9000/api/user_tokens/generate" \
@@ -70,16 +67,14 @@ jobs:
 
       - name: Run SonarQube Analysis
         run: |
-          echo ""
           echo "🔍 Running SonarQube analysis..."
           ./gradlew clean test integrationTest jacocoTestReport sonar
 
       - name: Check Quality Gate Status
         run: |
-          echo ""
           echo "📊 Checking Quality Gate status..."
           
-          # Espera inteligente con polling
+          # Intelligent wait with polling
           echo "⏳ Waiting for analysis to complete..."
           for i in {1..12}; do
             TOKEN=$(cat imports/sonarqube/sonar-token.txt)
@@ -101,7 +96,7 @@ jobs:
             sleep 5
           done
           
-          # Verificación final del Quality Gate
+          # Final Verification of Quality Gate
           TOKEN=$(cat imports/sonarqube/sonar-token.txt)
           final_status=$(curl -s -u "$TOKEN:" \
             "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
@@ -122,7 +117,6 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          echo ""
           echo "🧹 Cleaning up SonarQube container..."
           docker stop sonarqube 2>/dev/null || true
           docker rm sonarqube 2>/dev/null || true

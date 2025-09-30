@@ -1,10 +1,7 @@
-# .github/workflows/ci.yml
-name: CI/CD Pipeline
+name: Main Release Pipeline
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
 
 permissions:
@@ -12,9 +9,17 @@ permissions:
   packages: write  # For pushing to GHCR
   issues: write    # For creating releases
 
+concurrency: # Wait for Quality Gate to have passed
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  ci-cd:
+  release:
     runs-on: ubuntu-latest
+    # Verify that the Commit passed the Quality Gate
+    if: |
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
