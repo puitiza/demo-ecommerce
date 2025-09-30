@@ -8,14 +8,6 @@ jobs:
   quality-check:
     runs-on: ubuntu-latest
 
-    services:
-      sonarqube:
-        image: sonarqube:25.9.0.112764-community
-        ports: ["9000:9000"]
-        env:
-          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: true
-          SONARQUBE_ADMIN_PASSWORD: "MySecurePoCPass123!"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,61 +18,20 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Wait for SonarQube
+      - name: Start SonarQube with init script
         run: |
-          echo "⏳ Waiting for SonarQube to be fully ready..."
-          # Wait longer and check multiple times
-          sleep 90
-          echo "✅ SonarQube should be ready now"
-
-      - name: Generate Token
-        id: token
-        run: |
-          echo "🔑 Generating SonarQube token..."
+          echo "🚀 Starting SonarQube with initialization..."
+          docker-compose up -d sonarqube
           
-          # Wait a bit more
-          sleep 10
+          echo "⏳ Waiting for SonarQube to be ready..."
+          timeout 180s bash -c 'until curl -s http://localhost:9000/api/system/status | grep -q "UP"; do sleep 10; done'
           
-          # Try multiple times to generate token
-          for attempt in {1..3}; do
-            echo "Attempt $attempt to generate token..."
-          
-            response=$(curl -s -u "admin:MySecurePoCPass123!" \
-              -X POST "http://localhost:9000/api/user_tokens/generate" \
-              -d "name=ci-$(date +%s)" \
-              -H "Content-Type: application/x-www-form-urlencoded")
-          
-            echo "Response: $response"
-          
-            if [ -n "$response" ] && echo "$response" | grep -q '"token"'; then
-              token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
-              echo "✅ Token generated: ${token:0:10}..."
-              echo "token=$token" >> $GITHUB_OUTPUT
-              break
-            else
-              echo "❌ Attempt $attempt failed, waiting..."
-              sleep 10
-            fi
-          done
-          
-          if [ -z "$token" ]; then
-            echo "❌ All token generation attempts failed"
-            exit 1
-          fi
-
-      - name: Create token file for Gradle
-        run: |
-          echo "💾 Creating token file for Gradle..."
-          mkdir -p imports/sonarqube
-          echo "${{ steps.token.outputs.token }}" > imports/sonarqube/sonar-token.txt
-          echo "✅ Token file created"
+          echo "✅ SonarQube is ready with project and token initialized"
 
       - name: Run Analysis
-        env:
-          SONAR_TOKEN: ${{ steps.token.outputs.token }}
-          SONAR_HOST_URL: "http://localhost:9000"
         run: |
           echo "🔍 Running SonarQube analysis..."
+          # El token ya está creado por init.sh en imports/sonarqube/sonar-token.txt
           ./gradlew clean test integrationTest jacocoTestReport sonar
 
       - name: Check Quality Gate
@@ -88,7 +39,10 @@ jobs:
           echo "📊 Checking Quality Gate..."
           sleep 30
           
-          status=$(curl -s -u "${{ steps.token.outputs.token }}:" \
+          # Lee el token del archivo que creó init.sh
+          TOKEN=$(cat imports/sonarqube/sonar-token.txt)
+          
+          status=$(curl -s -u "$TOKEN:" \
             "http://localhost:9000/api/qualitygates/project_status?projectKey=demo-ecommerce" \
             | jq -r '.projectStatus.status')
           
@@ -100,3 +54,8 @@ jobs:
           else
             echo "✅ Quality Gate PASSED"
           fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down
