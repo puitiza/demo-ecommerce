@@ -34,7 +34,7 @@ jobs:
           timeout 300s bash -c 'until curl -s http://localhost:9000/api/system/status | grep -q "UP"; do sleep 10; done'
           echo "SonarQube is ready!"
 
-      - name: Generate Token
+      - name: Generate Token and Create File
         id: token
         run: |
           response=$(curl -s -u "admin:MySecurePoCPass123!" \
@@ -43,6 +43,11 @@ jobs:
           token=$(echo "$response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
           echo "token=$token" >> $GITHUB_OUTPUT
           echo "SONAR_TOKEN=$token" >> $GITHUB_ENV
+          
+          # Create Token Archive for Graduate
+          mkdir -p imports/sonarqube
+          echo "$token" > imports/sonarqube/sonar-token.txt
+          echo "Token file created"
 
       - name: Run Analysis
         env:

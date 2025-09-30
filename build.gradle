@@ -85,25 +85,24 @@ sonarqube {
         property "sonar.sourceEncoding", "UTF-8"
         property "sonar.modules", "order-service,product-service"
         property "sonar.coverage.exclusions", "**/*Application*.java, **/config/**"
-        property "sonar.token", resolveSonarToken()
-    }
-}
 
-String resolveSonarToken() {
-    // 1. Environment variable (CI/CD)
-    if (System.getenv("SONAR_TOKEN")) {
-        return System.getenv("SONAR_TOKEN")
+        // Conditional Route for Token: Local Check VS Docker
+        def sonarToken = System.getenv("SONAR_TOKEN")
+        if (sonarToken) {
+            property "sonar.token", sonarToken
+            println "✅ Using Sonar token from environment"
+        } else {
+            def tokenPath = "imports/sonarqube/sonar-token.txt"
+            def tokenFile = file(tokenPath)
+            if (!tokenFile.exists()) {
+                tokenPath = "../imports/sonarqube/sonar-token.txt"
+                tokenFile = file(tokenPath)
+            }
+            if (!tokenFile.exists()) {
+                throw new GradleException("SonarQube token not found. Run 'docker-compose up sonarqube' first")
+            }
+            property "sonar.token", tokenFile.text.trim()
+            println "✅ Using Sonar token from file"
+        }
     }
-
-    // 2. Local token file (Development)
-    def tokenFile = file("imports/sonarqube/sonar-token.txt")
-    if (!tokenFile.exists()) {
-        tokenFile = file("../imports/sonarqube/sonar-token.txt")
-    }
-
-    if (tokenFile.exists()) {
-        return tokenFile.text.trim()
-    }
-
-    throw new GradleException("SonarQube token not found. Run 'docker-compose up sonarqube' first")
 }
